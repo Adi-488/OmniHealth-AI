@@ -9,7 +9,10 @@ ENV PORT=8080
 # Set working directory
 WORKDIR /app
 
-# Install dependencies (We use the CPU version of PyTorch to keep the image small and deployment cheap)
+# Install system dependencies required for librosa and audio processing
+RUN apt-get update && apt-get install -y libsndfile1 ffmpeg && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies (We use the CPU version of PyTorch to keep the image small and deployment cheap)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
