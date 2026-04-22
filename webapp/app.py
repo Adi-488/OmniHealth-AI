@@ -13,6 +13,7 @@ from PIL import Image
 import numpy as np
 import librosa
 import torch.nn.functional as F
+import tempfile
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -167,7 +168,16 @@ def predict():
                     has_audio = True
                     
                     # Compute MFCCs to match shape_af
-                    y, sr = librosa.load(io.BytesIO(audio_bytes), sr=22050)
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as tmp:
+                        tmp.write(audio_bytes)
+                        tmp_path = tmp.name
+                    
+                    try:
+                        y, sr = librosa.load(tmp_path, sr=22050)
+                    finally:
+                        if os.path.exists(tmp_path):
+                            os.remove(tmp_path)
+                            
                     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=cfg['shape_af'][0])
                     
                     # Pad or truncate to match expected time frames (shape_af[1])
