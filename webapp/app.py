@@ -257,8 +257,8 @@ def predict():
             o_fg, o_af, o_ac, o_wa, o_sl = model(fg_t, af_t, ac_t, wa_t, sl_t)
 
         preds = {
-            "anemia": o_fg.argmax(1).item(),
-            "stress": o_af.argmax(1).item(),
+            "anemia": o_fg.argmax(1).item() if has_image else None,
+            "stress": o_af.argmax(1).item() if has_audio else None,
             "fatigue": o_ac.argmax(1).item() if has_accel else None,
             "dehydration": o_wa.argmax(1).item(),
             "sleep_disorder": o_sl.argmax(1).item()
@@ -277,7 +277,12 @@ def predict():
         for k in preds:
             cls = preds[k]
             if cls is None:
-                preds[k] = "Not Assessed \u2014 No accelerometer data provided"
+                if k == "anemia":
+                    preds[k] = "Not Assessed \u2014 No image provided"
+                elif k == "stress":
+                    preds[k] = "Not Assessed \u2014 No audio provided"
+                elif k == "fatigue":
+                    preds[k] = "Not Assessed \u2014 No accelerometer data provided"
             elif k in remap and cls in remap[k]:
                 preds[k] = remap[k][cls]
             else:

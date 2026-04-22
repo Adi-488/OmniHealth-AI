@@ -662,7 +662,19 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFuse.style.pointerEvents = 'none';
 
         try {
-            const response = await fetch('/predict', { method: 'POST', body: formData });
+            // Determine the URL based on where the frontend is hosted
+            let fetchUrl = '/predict';
+            if (window.location.hostname.includes('github.io') || window.location.protocol === 'file:') {
+                fetchUrl = 'https://omnihealth-ai-1008998645318.europe-west1.run.app/predict';
+            }
+
+            const response = await fetch(fetchUrl, { method: 'POST', body: formData });
+            
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Server returned ${response.status}: ${errText}`);
+            }
+
             const data = await response.json();
 
             if (data.error) {
@@ -685,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsPanel.style.display = 'block';
 
             const styleLabel = (val) => {
+                if (!val) return `<span class="val-na">Not Assessed</span>`;
                 let lower = val.toLowerCase();
                 if (lower.includes("not assessed")) return `<span class="val-na">${val}</span>`;
                 if (lower.includes("healthy") || lower.includes("none") || lower.includes("normal") || lower.includes("optimal")) return `<span class="val-pred">${val}</span>`;
@@ -700,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add confidence scores (simulated based on prediction certainty)
             const getConfidence = (val) => {
-                if (val.toLowerCase().includes('not assessed')) return '';
+                if (!val || val.toLowerCase().includes('not assessed')) return '';
                 if (val.toLowerCase().includes('healthy') || val.toLowerCase().includes('normal')) return 'High confidence';
                 if (val.toLowerCase().includes('detected') || val.toLowerCase().includes('critical')) return 'Requires attention';
                 return 'Moderate confidence';
@@ -712,25 +725,33 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('conf-water').textContent = getConfidence(data.dehydration);
             document.getElementById('conf-sleep').textContent = getConfidence(data.sleep_disorder);
 
-            // Calculate scores for charts
+            // Calculate scores for charts safely ignoring Not Assessed values
+            const getScore = (val, goodKw, badKw, defaultGood, defaultBad, fallback) => {
+                if (!val || val.toLowerCase().includes('not assessed')) return 0; // 0 will hide/skip it in charting if adapted
+                if (val.toLowerCase().includes(goodKw)) return defaultGood;
+                if (val.toLowerCase().includes(badKw)) return defaultBad;
+                return fallback;
+            };
+
             const scores = {
-                anemia: data.anemia.toLowerCase().includes('healthy') ? 85 : data.anemia.toLowerCase().includes('detected') ? 35 : 50,
-                stress: data.stress.toLowerCase().includes('healthy') ? 80 : data.stress.toLowerCase().includes('critical') ? 25 : 45,
-                fatigue: data.fatigue.toLowerCase().includes('normal') ? 85 : data.fatigue.toLowerCase().includes('severe') ? 30 : 50,
-                hydration: data.dehydration.toLowerCase().includes('optimal') ? 90 : data.dehydration.toLowerCase().includes('dehydrated') ? 35 : 55,
-                sleep: data.sleep_disorder.toLowerCase().includes('normal') ? 85 : data.sleep_disorder.toLowerCase().includes('apnea') ? 30 : 50
+                anemia: getScore(data.anemia, 'healthy', 'detected', 85, 35, 50),
+                stress: getScore(data.stress, 'healthy', 'critical', 80, 25, 45),
+                fatigue: getScore(data.fatigue, 'normal', 'severe', 85, 30, 50),
+                hydration: getScore(data.dehydration, 'optimal', 'dehydrated', 90, 35, 55),
+                sleep: getScore(data.sleep_disorder, 'normal', 'apnea', 85, 30, 50)
             };
 
             // Update charts and save to history
-            updateCharts(data);
-            saveToHistory(data, scores);
+            if (typeof updateCharts === 'function') updateCharts(data);
+            if (typeof saveToHistory === 'function') saveToHistory(data, scores);
 
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
         } catch (error) {
-            showToast('Failed to connect to OmniHealth Backend Engine. Please ensure app.py is running on port 5000.', 'error');
+            console.error('Fetch error:', error);
+            showToast(error.message || 'Failed to connect to backend engine.', 'error');
         } finally {
-            btnFuse.innerHTML = '<i class="fa-solid fa-network-wired"></i> Run Health Analysis';
+            btnFuse.innerHTML = '<i class="fa-solid fa-network-wired"></i> Execute Multimodal Fusion';
             btnFuse.style.pointerEvents = 'auto';
         }
     });
