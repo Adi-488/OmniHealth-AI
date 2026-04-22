@@ -11,6 +11,8 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
+import librosa
+import torch.nn.functional as F
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -118,7 +120,8 @@ def static_files(path):
 # Hardcoded image standardizer
 img_transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    transforms.ToTensor() 
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 @app.route('/predict', methods=['POST'])
@@ -162,13 +165,25 @@ def predict():
                     if len(audio_bytes) < 100:
                         return jsonify({"error": "Audio file is too small or empty. Please record or upload a valid audio clip."}), 400
                     has_audio = True
-                    # Audio processing: for now we use zero tensor as the model expects
-                    # mel-spectrogram features which require librosa preprocessing.
-                    # The audio file is accepted to confirm the input was provided.
+                    
+                    # Compute MFCCs to match shape_af
+                    y, sr = librosa.load(io.BytesIO(audio_bytes), sr=22050)
+                    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=cfg['shape_af'][0])
+                    
+                    # Pad or truncate to match expected time frames (shape_af[1])
+                    target_frames = cfg['shape_af'][1]
+                    if mfcc.shape[1] > target_frames:
+                        mfcc = mfcc[:, :target_frames]
+                    elif mfcc.shape[1] < target_frames:
+                        mfcc = np.pad(mfcc, ((0, 0), (0, target_frames - mfcc.shape[1])), mode='constant')
+                    
+                    af_t = torch.tensor(mfcc, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+
                 except Exception as audio_err:
                     return jsonify({"error": f"Invalid audio file: {str(audio_err)}"}), 400
 
-        af_t = torch.zeros(1, *cfg['shape_af']).to(DEVICE)
+        if not has_audio:
+            af_t = torch.zeros(1, *cfg['shape_af']).to(DEVICE)
 
         # ---- ACCELEROMETER ----
         if 'accel' in request.files:
@@ -199,12 +214,23 @@ def predict():
                     if len(accel_vals) < 5:
                         return jsonify({"error": "Could not parse enough numeric data from CSV. Ensure x,y,z columns contain numbers."}), 400
                     has_accel = True
+                    
+                    # Convert to tensor and shape properly to shape_ac
+                    t = torch.tensor(accel_vals, dtype=torch.float32)
+                    target_len = cfg['shape_ac'][0]
+                    if t.shape[0] > target_len:
+                        t = t[:target_len, :]
+                    elif t.shape[0] < target_len:
+                        t = F.pad(t, (0, 0, 0, target_len - t.shape[0]))
+                    ac_t = t.unsqueeze(0).to(DEVICE)
+                    
                 except UnicodeDecodeError:
                     return jsonify({"error": "Accelerometer file is not a valid CSV. Please upload a text-based CSV file."}), 400
                 except Exception as accel_err:
                     return jsonify({"error": f"Invalid accelerometer file: {str(accel_err)}"}), 400
 
-        ac_t = torch.zeros(1, *cfg['shape_ac']).to(DEVICE)
+        if not has_accel:
+            ac_t = torch.zeros(1, *cfg['shape_ac']).to(DEVICE)
 
         # ---- WATER ----
         water_raw = request.form.get('water', '').strip()
