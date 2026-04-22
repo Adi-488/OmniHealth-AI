@@ -420,13 +420,16 @@ document.addEventListener('DOMContentLoaded', () => {
         metricsChart.update();
 
         // Update distribution pie chart
-        const healthyCount = Object.values(results).filter(r =>
-            r.toLowerCase().includes('healthy') || r.toLowerCase().includes('normal') || r.toLowerCase().includes('none') || r.toLowerCase().includes('optimal')
-        ).length;
-        const criticalCount = Object.values(results).filter(r =>
-            r.toLowerCase().includes('critical') || r.toLowerCase().includes('severe') || r.toLowerCase().includes('apnea') || r.toLowerCase().includes('detected')
-        ).length;
-        const attentionCount = 5 - healthyCount - criticalCount;
+        const conditions = [results.anemia, results.stress, results.fatigue, results.dehydration, results.sleep_disorder];
+        
+        let healthyCount = 0, attentionCount = 0, criticalCount = 0;
+        conditions.forEach(r => {
+            if (!r || r.toLowerCase().includes('not assessed')) return; // Ignore unassessed values
+            const lower = r.toLowerCase();
+            if (lower.includes('healthy') || lower.includes('normal') || lower.includes('none') || lower.includes('optimal')) healthyCount++;
+            else if (lower.includes('critical') || lower.includes('severe') || lower.includes('apnea') || lower.includes('detected')) criticalCount++;
+            else attentionCount++;
+        });
 
         distributionChart.data.datasets[0].data = [healthyCount, attentionCount, criticalCount];
         distributionChart.update();
@@ -467,9 +470,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Count from latest analysis
         const latest = analysisHistory[analysisHistory.length - 1];
-        let healthy = 0, attention = 0, critical = 0;
+        let healthy = 0, attention = 0, critical = 0, totalAssessed = 0;
 
-        Object.values(latest.results).forEach(r => {
+        const latestConds = [latest.results.anemia, latest.results.stress, latest.results.fatigue, latest.results.dehydration, latest.results.sleep_disorder];
+        
+        latestConds.forEach(r => {
+            if (!r || r.toLowerCase().includes('not assessed')) return;
+            totalAssessed++;
             const lower = r.toLowerCase();
             if (lower.includes('healthy') || lower.includes('normal') || lower.includes('none') || lower.includes('optimal')) healthy++;
             else if (lower.includes('critical') || lower.includes('severe') || lower.includes('apnea') || lower.includes('detected')) critical++;
@@ -479,8 +486,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('healthyMarkers').textContent = healthy;
         document.getElementById('attentionNeeded').textContent = attention + critical;
 
-        // Calculate overall wellness
-        const wellness = Math.round((healthy / 5) * 100);
+        // Calculate overall wellness based only on Assessed markers
+        const wellness = totalAssessed > 0 ? Math.round((healthy / totalAssessed) * 100) : 0;
         document.getElementById('overallWellness').textContent = wellness + '%';
     }
 
@@ -520,7 +527,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveToHistory(results, scores) {
         // Determine overall status
         let criticalCount = 0, attentionCount = 0;
-        Object.values(results).forEach(r => {
+        const conditions = [results.anemia, results.stress, results.fatigue, results.dehydration, results.sleep_disorder];
+        
+        conditions.forEach(r => {
+            if (!r || r.toLowerCase().includes('not assessed')) return;
             const lower = r.toLowerCase();
             if (lower.includes('critical') || lower.includes('severe') || lower.includes('apnea') || lower.includes('detected')) criticalCount++;
             else if (!lower.includes('healthy') && !lower.includes('normal') && !lower.includes('none') && !lower.includes('optimal')) attentionCount++;
