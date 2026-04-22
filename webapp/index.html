@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniHealth AI | Professional Health Dashboard</title>
+    <meta name="description" content="OmniHealth AI is a multimodal diagnostic platform that processes image, audio, accelerometer, and tabular vitals to generate a holistic health profile.">
+    <meta name="keywords" content="OmniHealth, AI Diagnosis, Multimodal Health, PyTorch, Health Dashboard">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <div class="background-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fa-solid fa-brain"></i> OmniHealth AI
+        </div>
+        <div class="nav-links">
+            <span>Group ID 13</span>
+            <span class="badge">Capstone V2.0</span>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <header class="dash-header">
+            <h1>Health Analytics Dashboard</h1>
+            <p>Comprehensive multimodal health analysis with real-time diagnostics and historical trends</p>
+        </header>
+
+        <!-- Toast notification container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Quick Stats Overview -->
+        <section class="stats-overview" id="statsOverview">
+            <div class="stat-card">
+                <div class="stat-icon bg-blue">
+                    <i class="fa-solid fa-user-doctor"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Total Analyses</span>
+                    <span class="stat-value" id="totalAnalyses">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-green">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Healthy Markers</span>
+                    <span class="stat-value" id="healthyMarkers">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-amber">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Attention Needed</span>
+                    <span class="stat-value" id="attentionNeeded">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-purple">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Overall Wellness</span>
+                    <span class="stat-value" id="overallWellness">--%</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="dashboard-grid">
+            <!-- Left Column - Input Section -->
+            <section class="input-section">
+                <h2 class="section-title"><i class="fa-solid fa-upload"></i> Patient Data Input</h2>
+
+                <form id="healthForm" class="upload-grid">
+
+                    <!-- Fingernail Dropzone -->
+                    <div class="upload-card" id="card-image">
+                        <div class="card-icon"><i class="fa-regular fa-image"></i></div>
+                        <h3>Fingernail Analysis</h3>
+                        <p>Detect Anemia</p>
+                        <div class="file-drop" id="drop-image">
+                            <input type="file" id="fileImage" accept="image/*" hidden>
+                            <div class="input-actions">
+                                <label for="fileImage" class="btn-upload"><i class="fa-solid fa-folder-open"></i> Browse</label>
+                                <button type="button" class="btn-upload btn-capture" id="btnCaptureImage"><i class="fa-solid fa-camera"></i> Camera</button>
+                            </div>
+                            <span class="file-name" id="imageFileName">No file selected</span>
+                            <div class="camera-preview-wrapper" id="cameraPreviewWrapper" style="display:none;">
+                                <video id="cameraPreview" autoplay playsinline muted></video>
+                                <div class="camera-controls">
+                                    <button type="button" class="btn-snap" id="btnSnap"><i class="fa-solid fa-circle"></i></button>
+                                    <button type="button" class="btn-cancel-cam" id="btnCancelCam"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                            <canvas id="cameraCanvas" style="display:none;"></canvas>
+                            <img id="capturedImageThumb" class="captured-thumb" style="display:none;" alt="Captured">
+                        </div>
+                    </div>
+
+                    <!-- Audio Dropzone -->
+                    <div class="upload-card" id="card-audio">
+                        <div class="card-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+                        <h3>Audio Profile</h3>
+                        <p>Stress Detection</p>
+                        <div class="file-drop" id="drop-audio">
+                            <input type="file" id="fileAudio" accept="audio/*" hidden>
+                            <div class="input-actions">
+                                <label for="fileAudio" class="btn-upload"><i class="fa-solid fa-folder-open"></i> Browse</label>
+                                <button type="button" class="btn-upload btn-capture" id="btnRecordAudio"><i class="fa-solid fa-microphone"></i> Record</button>
+                            </div>
+                            <span class="file-name" id="audioFileName">No file selected</span>
+                            <div class="recording-indicator" id="recordingIndicator" style="display:none;">
+                                <span class="rec-dot"></span>
+                                <span class="rec-timer" id="recTimer">00:00</span>
+                                <button type="button" class="btn-stop-rec" id="btnStopRec"><i class="fa-solid fa-stop"></i> Stop</button>
+                            </div>
+                            <audio id="audioPlayback" controls style="display:none; width:100%; margin-top:0.8rem;"></audio>
+                        </div>
+                    </div>
+
+                    <!-- Accelerometer Dropzone -->
+                    <div class="upload-card" id="card-accel">
+                        <div class="card-icon"><i class="fa-solid fa-person-running"></i></div>
+                        <h3>Accelerometer</h3>
+                        <p>Fatigue Mapping</p>
+                        <div class="file-drop" id="drop-accel">
+                            <input type="file" id="fileAccel" accept=".csv" hidden>
+                            <div class="input-actions">
+                                <label for="fileAccel" class="btn-upload"><i class="fa-solid fa-folder-open"></i> Browse CSV</label>
+                                <button type="button" class="btn-upload btn-capture" id="btnRecordAccel"><i class="fa-solid fa-satellite-dish"></i> Sensor</button>
+                            </div>
+                            <span class="file-name" id="accelFileName">No file selected</span>
+                            <div class="recording-indicator" id="accelIndicator" style="display:none;">
+                                <span class="rec-dot accel-dot"></span>
+                                <span class="rec-timer" id="accelTimer">00:00</span>
+                                <span class="accel-samples" id="accelSamples">0 samples</span>
+                                <button type="button" class="btn-stop-rec" id="btnStopAccel"><i class="fa-solid fa-stop"></i> Stop</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Water/Sleep Dropzone -->
+                    <div class="upload-card wide-card">
+                        <div class="card-icon"><i class="fa-solid fa-bed-pulse"></i></div>
+                        <h3>Tabular Vitals</h3>
+                        <p>Hydration & Sleep Disorder Profiling</p>
+                        <div class="tabular-inputs">
+                            <div class="input-group">
+                                <label><i class="fa-solid fa-droplet"></i> Water Consumption (L)</label>
+                                <input type="number" id="waterVal" step="0.1" min="0" max="20" placeholder="e.g. 2.5">
+                            </div>
+                            <div class="input-group">
+                                <label><i class="fa-solid fa-moon"></i> Sleep Duration (Hrs)</label>
+                                <input type="number" id="sleepVal" step="0.1" min="0" max="24" placeholder="e.g. 6.5">
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+
+                <div class="action-row">
+                    <button class="btn-fuse" id="btnFuse">
+                        <i class="fa-solid fa-network-wired"></i> Run Health Analysis
+                    </button>
+                </div>
+
+                <!-- Validation Warning -->
+                <div class="validation-warning" id="validationWarning" style="display:none;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span id="validationMsg">Please provide at least one input to run diagnostics.</span>
+                </div>
+            </section>
+
+            <!-- Right Column - Results & Charts -->
+            <section class="results-section">
+                <h2 class="section-title"><i class="fa-solid fa-chart-pie"></i> Analysis Results</h2>
+
+                <!-- Results Panel -->
+                <div class="results-panel" id="resultsPanel" style="display: none;">
+                    <div class="input-summary" id="inputSummary"></div>
+
+                    <!-- Diagnosis Cards -->
+                    <div class="results-grid">
+                        <div class="res-box" id="res-anemia">
+                            <span class="title"><i class="fa-solid fa-hand-holding-medical"></i> Anemia Status</span>
+                            <span class="val">--</span>
+                            <span class="confidence" id="conf-anemia"></span>
+                        </div>
+                        <div class="res-box" id="res-stress">
+                            <span class="title"><i class="fa-solid fa-brain"></i> Stress Level</span>
+                            <span class="val">--</span>
+                            <span class="confidence" id="conf-stress"></span>
+                        </div>
+                        <div class="res-box" id="res-fatigue">
+                            <span class="title"><i class="fa-solid fa-person-walking"></i> Fatigue Index</span>
+                            <span class="val">--</span>
+                            <span class="confidence" id="conf-fatigue"></span>
+                        </div>
+                        <div class="res-box" id="res-water">
+                            <span class="title"><i class="fa-solid fa-glass-water"></i> Hydration</span>
+                            <span class="val">--</span>
+                            <span class="confidence" id="conf-water"></span>
+                        </div>
+                        <div class="res-box" id="res-sleep">
+                            <span class="title"><i class="fa-solid fa-bed"></i> Sleep Health</span>
+                            <span class="val">--</span>
+                            <span class="confidence" id="conf-sleep"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-section" id="chartsSection">
+                    <div class="chart-row">
+                        <div class="chart-card">
+                            <h3 class="chart-title"><i class="fa-solid fa-chart-bar"></i> Health Metrics Overview</h3>
+                            <canvas id="metricsChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 class="chart-title"><i class="fa-solid fa-chart-pie"></i> Condition Distribution</h3>
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card full-width">
+                        <h3 class="chart-title"><i class="fa-solid fa-chart-line"></i> Historical Trends</h3>
+                        <div class="chart-legend">
+                            <span class="legend-item"><span class="legend-dot dot-anemia"></span> Anemia Risk</span>
+                            <span class="legend-item"><span class="legend-dot dot-stress"></span> Stress Level</span>
+                            <span class="legend-item"><span class="legend-dot dot-fatigue"></span> Fatigue</span>
+                            <span class="legend-item"><span class="legend-dot dot-hydration"></span> Hydration</span>
+                            <span class="legend-item"><span class="legend-dot dot-sleep"></span> Sleep Quality</span>
+                        </div>
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Patient History -->
+                <div class="history-section" id="historySection">
+                    <h3 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Analysis History</h3>
+                    <div class="history-table-wrapper">
+                        <table class="history-table" id="historyTable">
+                            <thead>
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Anemia</th>
+                                    <th>Stress</th>
+                                    <th>Fatigue</th>
+                                    <th>Hydration</th>
+                                    <th>Sleep</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <tr class="empty-row">
+                                    <td colspan="7">No analysis history yet. Run your first health analysis to see results here.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="history-actions">
+                        <button class="btn-secondary" id="btnExportHistory"><i class="fa-solid fa-download"></i> Export History</button>
+                        <button class="btn-secondary" id="btnClearHistory"><i class="fa-solid fa-trash"></i> Clear History</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

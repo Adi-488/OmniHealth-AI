@@ -1,0 +1,33 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Ignore all PyTorch checkpoints to prevent huge Git commits
+*.pth
+*.pt
+# EXCEPTION: We explicitly track the main model for production deployment
+!multimodal_model.pth
+
+# Large Dataset & Processing Folders
+Datasets/
+processed_data/
+module3_models/
+exported_model/
+
+# Python defaults
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter Notebooks (too large and not needed for deployment)
+.ipynb_checkpoints
+*.ipynb
+
+# Webapp debug files
+webapp/example_inputs/
