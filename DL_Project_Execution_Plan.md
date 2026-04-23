@@ -341,3 +341,4 @@ For each modality:
 ---
 
 *Plan authored for Antigravity code generation. Each section is self-contained and can be fed as a prompt with the section title as context.*
+
