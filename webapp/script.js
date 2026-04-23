@@ -755,6 +755,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof updateCharts === 'function') updateCharts(data);
             if (typeof saveToHistory === 'function') saveToHistory(data, scores);
 
+            // Fetch AI Coach Insights Asynchronously
+            const coachTextElem = document.getElementById('aiCoachText');
+            coachTextElem.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Generating personalized health insights...';
+            
+            fetch(fetchUrl.replace('/predict', '/coach'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(res => res.json())
+              .then(coachData => {
+                  if (coachData.error) {
+                      coachTextElem.innerHTML = `<span style="color:var(--val-crit)"><i class="fa-solid fa-triangle-exclamation"></i> ${coachData.error}</span>`;
+                  } else {
+                      coachTextElem.innerHTML = coachData.message;
+                  }
+              }).catch(err => {
+                  coachTextElem.innerHTML = '<span style="color:var(--val-warn)"><i class="fa-solid fa-cloud-arrow-down"></i> AI Coach is currently offline. Please try again later.</span>';
+              });
+
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
         } catch (error) {

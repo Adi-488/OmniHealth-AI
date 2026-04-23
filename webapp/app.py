@@ -12,6 +12,13 @@ import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
 import torch.nn.functional as F
+from openai import OpenAI
+
+OPENROUTER_API_KEY = "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"
+openai_client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key=OPENROUTER_API_KEY,
+)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -313,6 +320,42 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/coach', methods=['POST'])
+def coach():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        prompt = f"""
+        You are OmniHealth AI, an expert, professional, yet empathetic medical and wellness coach.
+        A user has just completed a multimodal health analysis with the following results:
+        - Anemia Status: {data.get('anemia', 'Not Assessed')}
+        - Stress Level: {data.get('stress', 'Not Assessed')}
+        - Fatigue Index: {data.get('fatigue', 'Not Assessed')}
+        - Hydration: {data.get('dehydration', 'Not Assessed')}
+        - Sleep Quality: {data.get('sleep_disorder', 'Not Assessed')}
+
+        Write a short, engaging 2 to 3 sentence paragraph addressing the user directly.
+        Acknowledge any critical or sub-optimal parameters and give a highly personalized, actionable piece of wellness advice.
+        If everything is healthy, encourage them to keep up the great work. Keep it professional but warm. Do not use markdown or bullet points.
+        """
+
+        completion = openai_client.chat.completions.create(
+          model="google/gemini-2.5-flash-free",
+          messages=[
+            {"role": "system", "content": "You are a professional health coach."},
+            {"role": "user", "content": prompt}
+          ],
+          timeout=15.0 # Prevent hanging
+        )
+        
+        reply = completion.choices[0].message.content.strip()
+        return jsonify({"message": reply})
+
+    except Exception as e:
+        return jsonify({"error": "Health coach currently unavailable. " + str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
