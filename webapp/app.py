@@ -14,7 +14,7 @@ import numpy as np
 import torch.nn.functional as F
 from openai import OpenAI
 
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 openai_client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
   api_key=OPENROUTER_API_KEY,
