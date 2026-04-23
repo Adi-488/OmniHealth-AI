@@ -11,9 +11,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
-import librosa
 import torch.nn.functional as F
-import tempfile
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -166,34 +164,12 @@ def predict():
                     if len(audio_bytes) < 100:
                         return jsonify({"error": "Audio file is too small or empty. Please record or upload a valid audio clip."}), 400
                     has_audio = True
-                    
-                    # Compute MFCCs to match shape_af
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as tmp:
-                        tmp.write(audio_bytes)
-                        tmp_path = tmp.name
-                    
-                    try:
-                        y, sr = librosa.load(tmp_path, sr=22050)
-                    finally:
-                        if os.path.exists(tmp_path):
-                            os.remove(tmp_path)
-                            
-                    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=cfg['shape_af'][0])
-                    
-                    # Pad or truncate to match expected time frames (shape_af[1])
-                    target_frames = cfg['shape_af'][1]
-                    if mfcc.shape[1] > target_frames:
-                        mfcc = mfcc[:, :target_frames]
-                    elif mfcc.shape[1] < target_frames:
-                        mfcc = np.pad(mfcc, ((0, 0), (0, target_frames - mfcc.shape[1])), mode='constant')
-                    
-                    af_t = torch.tensor(mfcc, dtype=torch.float32).unsqueeze(0).to(DEVICE)
-
+                    # Audio processing is disabled (uses zero tensor) to prevent 503 Out-Of-Memory crashes
+                    # on Cloud Run's default 512MB instances. librosa + ffmpeg exceeds the limit.
                 except Exception as audio_err:
                     return jsonify({"error": f"Invalid audio file: {str(audio_err)}"}), 400
 
-        if not has_audio:
-            af_t = torch.zeros(1, *cfg['shape_af']).to(DEVICE)
+        af_t = torch.zeros(1, *cfg['shape_af']).to(DEVICE)
 
         # ---- ACCELEROMETER ----
         if 'accel' in request.files:
